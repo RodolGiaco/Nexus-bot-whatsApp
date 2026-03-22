@@ -2,14 +2,25 @@ import whatsappService from './whatsappService.js';
 /* import appendToSheet from './googleSheetsService.js';
 import openAiService from './openAiService.js'; */
 
+// ⚠️ IMPORTANTE: Reemplaza esto con el número real del profesor (con código de país, sin el '+' ni el '9' intermedio en Argentina). Ejemplo: '542610000000'
+const PROFESSOR_PHONE = '542616268872';
 class MessageHandler {
 
   constructor() {
     this.appointmentState = {};
     this.assistandState = {};
+    // 1. Inicializamos el estado para pausar el bot
+    this.humanHandoffState = {};
   }
 
   async handleIncomingMessage(message, senderInfo) {
+    // 2. Intercepción: Si el usuario está en modo "Hablar con Profe", desviamos el flujo
+    if (this.humanHandoffState[message.from]) {
+      await this.handleHumanHandoffFlow(message, senderInfo);
+      await whatsappService.markAsRead(message.id);
+      return; 
+    }
+
     // Si el usuario está en medio de agendar una cita, capturamos su respuesta de texto
     if (message?.type === 'text' && this.appointmentState[message.from]) {
       await this.handleAppointmentFlow(message.from, message.text.body);
@@ -132,8 +143,10 @@ Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evol
         response = "¡Perfecto, un enfoque 100% en vos! 🎯\n\nPara agendar tu clase de prueba, por favor escribime tu *Nombre y Apellido*:";
         break;
       case 'option_3':
-        response = "Opcion aun no implementada"
-        break
+        // 3. Activamos el estado y damos instrucciones al usuario
+        this.humanHandoffState[to] = true;
+        response = "Entendido 🤝. Escribí tu consulta en un solo mensaje y se la enviaré directamente a uno de los profes.\n\n_(Para cancelar y volver al menú, escribí la palabra *VOLVER*)_";
+        break;
       case 'option_4':
         response = `
 🔹 *Clases Grupales* 🧠💪
@@ -221,9 +234,40 @@ Incluye:
         break
     }
     await whatsappService.sendMessage(to, response);
-    // Evitamos enviar el menú de retorno si el usuario acaba de empezar el cuestionario de cita
-    if (!this.appointmentState[to]) {
+    // Evitamos enviar el menú de retorno si el usuario está agendando o hablando con un profe
+    if (!this.appointmentState[to] && !this.humanHandoffState[to]) {
       await this.answerBack(to);
+    }
+  }
+
+  // 4. Nueva función para procesar la comunicación entre usuario y profesor
+  async handleHumanHandoffFlow(message, senderInfo) {
+    const to = message.from;
+    const text = message.type === 'text' ? message.text.body : '';
+
+    // Opción para abortar y salir del modo "Pausa"
+    if (text.trim().toLowerCase() === 'volver') {
+        delete this.humanHandoffState[to];
+        await whatsappService.sendMessage(to, "Operación cancelada. Regresando al menú principal 🔄");
+        await this.sendWelcomeMenu(to);
+        return;
+    }
+
+    if (message.type === 'text') {
+        const userName = this.getSenderName(senderInfo);
+        
+        // Construimos el aviso que recibirá el profesor
+        const messageForProfessor = `🚨 *NUEVA CONSULTA* 🚨\n\n👤 *De:* ${userName}\n📱 *Número:* +${to}\n💬 *Mensaje:* "${text}"\n\n_Para responderle, tocá su número arriba para abrir el chat directo._`;
+
+        // Reutilizamos whatsappService pero apuntando al PROFESSOR_PHONE
+        await whatsappService.sendMessage(PROFESSOR_PHONE, messageForProfessor);
+
+        // Limpiamos el estado y devolvemos al usuario al menú principal
+        delete this.humanHandoffState[to];
+        await whatsappService.sendMessage(to, "✅ Tu mensaje fue enviado exitosamente al profesor. Se pondrá en contacto con vos a la brevedad.\n\nTe dejo nuevamente el menú principal:");
+        await this.sendWelcomeMenu(to);
+    } else {
+        await whatsappService.sendMessage(to, "Por favor, escribí tu consulta en formato de *texto*, o escribí *VOLVER* para cancelar.");
     }
   }
 

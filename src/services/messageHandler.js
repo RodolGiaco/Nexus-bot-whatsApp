@@ -10,6 +10,13 @@ class MessageHandler {
   }
 
   async handleIncomingMessage(message, senderInfo) {
+    // Si el usuario está en medio de agendar una cita, capturamos su respuesta de texto
+    if (message?.type === 'text' && this.appointmentState[message.from]) {
+      await this.handleAppointmentFlow(message.from, message.text.body);
+      await whatsappService.markAsRead(message.id);
+      return; 
+    }
+
     if (message?.type === 'text') {
       const incomingMessage = message.text.body.toLowerCase().trim();
 
@@ -53,10 +60,10 @@ Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evol
         type: 'reply', reply: { id: 'option_1', title: 'Planes' }
       },
       {
-        type: 'reply', reply: { id: 'option_2', title: 'Clase de prueba'}
+        type: 'reply', reply: { id: 'option_2', title: 'Clase de Prueba'}
       },
       {
-        type: 'reply', reply: { id: 'option_3', title: '¿Quienes Somos?'}
+        type: 'reply', reply: { id: 'option_3', title: 'Hablar con un Profe'}
       }
     ];
 
@@ -83,6 +90,14 @@ Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evol
     await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
   }
 
+  async sendTrialMenu(to) {
+    const menuMessage = "¿Qué modalidad te gustaría probar en tu clase? 🚀";
+    const buttons = [
+      { type: 'reply', reply: { id: 'trial_grupal', title: 'Grupal' } },
+      { type: 'reply', reply: { id: 'trial_particular', title: 'Particular' } }
+    ];
+    await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
+  }
   
 
   waiting = (delay, callback) => {
@@ -103,8 +118,19 @@ Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evol
         await this.sendPlansMenu(to);
         return
       case 'option_2':
-        response = "Opcion aun no implementada"
-        break
+        // Mostramos el submenú de clase de prueba
+        await this.sendTrialMenu(to);
+        return;
+      case 'trial_grupal':
+        // Iniciamos el estado para Grupal
+        this.appointmentState[to] = { step: 'name', modality: 'Grupal', day: 'Sábado' };
+        response = "¡Excelente elección para entrenar en equipo! 💪\n\nPara agendar tu clase de prueba, por favor escribime tu *Nombre y Apellido*:";
+        break;
+      case 'trial_particular':
+         // Iniciamos el estado para Particular
+        this.appointmentState[to] = { step: 'name', modality: 'Particular', day: 'Lunes' };
+        response = "¡Perfecto, un enfoque 100% en vos! 🎯\n\nPara agendar tu clase de prueba, por favor escribime tu *Nombre y Apellido*:";
+        break;
       case 'option_3':
         response = "Opcion aun no implementada"
         break
@@ -195,7 +221,10 @@ Incluye:
         break
     }
     await whatsappService.sendMessage(to, response);
-    await this.answerBack(to);
+    // Evitamos enviar el menú de retorno si el usuario acaba de empezar el cuestionario de cita
+    if (!this.appointmentState[to]) {
+      await this.answerBack(to);
+    }
   }
 
   async answerBack(to) {
@@ -247,26 +276,31 @@ Incluye:
     const appointment = this.appointmentState[to];
     delete this.appointmentState[to];
 
+    // Array preparado para tu Google Sheets cuando lo habilites
     const userData = [
       to,
       appointment.name,
-      appointment.petName,
-      appointment.petType,
-      appointment.reason,
+      appointment.age,
+      appointment.metrics,
+      appointment.modality,
+      appointment.day,
       new Date().toISOString()
-    ]
+    ];
 
-    appendToSheet(userData);
+    // appendToSheet(userData);
 
-    return `Gracias por agendar tu cita. 
-    Resumen de tu cita:
+    return `¡Listo! Tu clase de prueba ha sido agendada con éxito 🎉.
     
-    Nombre: ${appointment.name}
-    Nombre de la mascota: ${appointment.petName}
-    Tipo de mascota: ${appointment.petType}
-    Motivo: ${appointment.reason}
+📋 *Resumen de tu clase:*
+👤 Nombre: ${appointment.name}
+🏋️‍♂️ Modalidad: ${appointment.modality}
+🗓 Día: ${appointment.day}
+⏱ Hora: Hablar con los profes
     
-    Nos pondremos en contacto contigo pronto para confirmar la fecha y hora de tu cita.`
+Por último, te pido que completes este breve cuestionario para conocerte mejor antes de arrancar. Es súper importante:
+👉 https://docs.google.com/forms/d/16CCzddeGjIaj1K93y7oyvVnallAAh7Gn0WsZydtUC3o/edit#response=ACYDBNhZmmg7gG8nE2LKHxIpduKNSr9CMhMDoDreeQNKl5X04_cUowy8SfL-yJDs41XqGYw
+    
+¡Nos vemos pronto en Nexus Calistenia!`;
   }
 
   async handleAppointmentFlow(to, message) {
@@ -276,25 +310,26 @@ Incluye:
     switch (state.step) {
       case 'name':
         state.name = message;
-        state.step = 'petName';
-        response = "Gracias, Ahora, ¿Cuál es el nombre de tu Mascota?"
+        state.step = 'age';
+        response = `Gracias ${state.name}. ¿Cuál es tu *edad*?`;
         break;
-      case 'petName':
-        state.petName = message;
-        state.step = 'petType';
-        response = '¿Qué tipo de mascota es? (por ejemplo: perro, gato, huron, etc.)'
+      case 'age':
+        state.age = message;
+        state.step = 'metrics';
+        response = 'Perfecto. Ahora decime tu *peso y altura* aproximados (ejemplo: 70kg, 1.75m):';
         break;
-      case 'petType':
-        state.petType = message;
-        state.step = 'reason';
-        response = '¿Cuál es el motivo de la Consulta?';
-        break;
-      case 'reason':
-        state.reason = message;
+      case 'metrics':
+        state.metrics = message;
         response = this.completeAppointment(to);
         break;
     }
+    
     await whatsappService.sendMessage(to, response);
+    
+    // Si la cita finalizó y se borró el estado, le mostramos el menú para volver
+    if (!this.appointmentState[to]) {
+      await this.answerBack(to);
+    }
   }
 
 

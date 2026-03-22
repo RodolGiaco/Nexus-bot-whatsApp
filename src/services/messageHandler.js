@@ -11,14 +11,25 @@ class MessageHandler {
     this.assistandState = {};
     // 1. Inicializamos el estado para pausar el bot
     this.humanHandoffState = {};
+
+    // --- NUEVO: Sistema de Sesiones (Modo Puente) ---
+    this.activeChats = {}; // Clientes en chat con el profe: { '549...': true }
+    this.currentClientForProfessor = null; // Guarda el ID del cliente al que el profe le está respondiendo
   }
 
   async handleIncomingMessage(message, senderInfo) {
-    // 2. Intercepción: Si el usuario está en modo "Hablar con Profe", desviamos el flujo
-    if (this.humanHandoffState[message.from]) {
-      await this.handleHumanHandoffFlow(message, senderInfo);
-      await whatsappService.markAsRead(message.id);
-      return; 
+    // 1. ENRUTADOR: ¿El mensaje viene del número del PROFESOR?
+    if (message.from === PROFESSOR_PHONE) {
+        await this.handleProfessorMessage(message);
+        await whatsappService.markAsRead(message.id);
+        return;
+    }
+
+    // 2. ENRUTADOR: ¿El mensaje viene de un CLIENTE que está en modo chat?
+    if (this.activeChats[message.from]) {
+        await this.handleClientBridgeMessage(message, senderInfo);
+        await whatsappService.markAsRead(message.id);
+        return;
     }
 
     // Si el usuario está en medio de agendar una cita, capturamos su respuesta de texto
@@ -46,6 +57,78 @@ class MessageHandler {
 
   }
 
+  // --- NUEVO: Lógica del Cliente hacia el Profesor ---
+  async handleClientBridgeMessage(message, senderInfo) {
+    const to = message.from;
+    const text = message.type === 'text' ? message.text.body : '';
+
+    // El cliente decide salir del modo chat
+    if (text.trim().toLowerCase() === 'volver') {
+        delete this.activeChats[to];
+        // Si era el cliente actual del profe, lo liberamos
+        if (this.currentClientForProfessor === to) {
+            this.currentClientForProfessor = null;
+            await whatsappService.sendMessage(PROFESSOR_PHONE, `⚠️ El cliente +${to} abandonó el chat.`);
+        }
+        await whatsappService.sendMessage(to, "Chat finalizado. Regresando al menú principal 🔄");
+        await this.sendWelcomeMenu(to);
+        return;
+    }
+
+    // Enviar mensaje al profe
+    if (message.type === 'text') {
+        const userName = this.getSenderName(senderInfo);
+        
+        // Asignación automática: si el profe está libre, se le asigna este cliente
+        if (!this.currentClientForProfessor) {
+            this.currentClientForProfessor = to;
+            await whatsappService.sendMessage(PROFESSOR_PHONE, `🔔 *NUEVO CHAT INICIADO*\nEstás hablando con: ${userName} (+${to})\nPara terminar la consulta, escribí */cerrar*`);
+        }
+
+        // Enviamos el mensaje etiquetado al profe
+        await whatsappService.sendMessage(PROFESSOR_PHONE, `💬 *${userName}:* ${text}`);
+
+        if (!this.activeChats[to].firstMessageSent) {
+            await whatsappService.sendMessage(to, "✅ Tu mensaje fue enviado exitosamente. A la brevedad se estará comunicando el profe por este medio.");
+            this.activeChats[to].firstMessageSent = true; // Cambiamos el interruptor
+        }
+    } else {
+        await whatsappService.sendMessage(to, "Por favor, escribí en formato de *texto*, o escribí *VOLVER* para salir.");
+    }
+  }
+
+  // --- NUEVO: Lógica del Profesor hacia el Cliente ---
+  async handleProfessorMessage(message) {
+    const text = message.type === 'text' ? message.text.body : '';
+
+    // Comando para terminar la sesión
+    if (text.trim().toLowerCase() === '/cerrar') {
+        if (this.currentClientForProfessor) {
+            const clientId = this.currentClientForProfessor;
+            delete this.activeChats[clientId];
+            this.currentClientForProfessor = null;
+            
+            await whatsappService.sendMessage(clientId, "👨‍🏫 El profesor ha finalizado la consulta. ¡Gracias!\n\nTe dejo nuevamente el menú principal:");
+            await this.sendWelcomeMenu(clientId);
+            await whatsappService.sendMessage(PROFESSOR_PHONE, "✅ Sesión cerrada correctamente. Estás libre.");
+        } else {
+            await whatsappService.sendMessage(PROFESSOR_PHONE, "No hay ninguna sesión activa para cerrar.");
+        }
+        return;
+    }
+
+    // Reenviar respuesta al cliente activo
+    if (this.currentClientForProfessor) {
+        if (message.type === 'text') {
+            await whatsappService.sendMessage(this.currentClientForProfessor, text);
+        } else {
+            await whatsappService.sendMessage(PROFESSOR_PHONE, "⚠️ Por ahora, solo podés responder al cliente con texto.");
+        }
+    } else {
+        await whatsappService.sendMessage(PROFESSOR_PHONE, "No tenés ningún chat activo con un cliente. Cuando alguien elija la opción, se te asignará automáticamente.");
+    }
+  }
+
   isGreeting(message) {
     const greetings = ["hola", "hello", "hi", "buenas tardes"];
     return greetings.includes(message);
@@ -58,7 +141,7 @@ class MessageHandler {
   async sendWelcomeMessage(to, messageId, senderInfo) {
     const name = this.getSenderName(senderInfo);
     const firstName = name.split(' ')[0];
-    const welcomeMessage = `Hola ${firstName} 👋, Bienvenido a *Nexus Calistenia con proposito.*
+    const welcomeMessage = `Hola ${firstName} 👋, Soy Nexia tu asistente virtual de *Nexus Calistenia con proposito.*
     
 Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evolucionar con intención 🧠💪`;
     await whatsappService.sendMessage(to, welcomeMessage, messageId);
@@ -145,6 +228,7 @@ Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evol
       case 'option_3':
         // 3. Activamos el estado y damos instrucciones al usuario
         this.humanHandoffState[to] = true;
+        this.activeChats[to] = { firstMessageSent: false };
         response = "Entendido 🤝. Escribí tu consulta en un solo mensaje y se la enviaré directamente a uno de los profes.\n\n_(Para cancelar y volver al menú, escribí la palabra *VOLVER*)_";
         break;
       case 'option_4':

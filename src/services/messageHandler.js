@@ -295,7 +295,7 @@ Incluye:
 👤 Nombre: ${appointment.name}
 🏋️‍♂️ Modalidad: ${appointment.modality}
 🗓 Día: ${appointment.day}
-⏱ Hora: Hablar con los profes
+⏱ Hora: Hablar con los profes por disponibilidad
     
 Por último, te pido que completes este breve cuestionario para conocerte mejor antes de arrancar. Es súper importante:
 👉 https://docs.google.com/forms/d/16CCzddeGjIaj1K93y7oyvVnallAAh7Gn0WsZydtUC3o/edit#response=ACYDBNhZmmg7gG8nE2LKHxIpduKNSr9CMhMDoDreeQNKl5X04_cUowy8SfL-yJDs41XqGYw

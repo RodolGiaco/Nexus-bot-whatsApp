@@ -400,7 +400,7 @@ Incluye:
     await whatsappService.sendMediaMessage(to, type, mediaUrl, caption);
   }
 
-  completeAppointment(to) {
+async completeAppointment(to) {
     const appointment = this.appointmentState[to];
     delete this.appointmentState[to];
 
@@ -417,13 +417,19 @@ Incluye:
 
     // appendToSheet(userData);
 
-    return `¡Listo! Tu clase de prueba ha sido agendada con éxito 🎉.
+    // 👉 NUEVO: Notificamos al profe sobre el nuevo turno agendado
+    const notificationForProfessor = `📅 *NUEVO TURNO AGENDADO* 📅\n\n👤 *Nombre:* ${appointment.name}\n📱 *Número:* +${to}\n🏋️‍♂️ *Modalidad:* ${appointment.modality}\n🎂 *Edad:* ${appointment.age}\n⚖️ *Peso/Altura:* ${appointment.metrics}\n🗓 *Día base:* ${appointment.day}\n\n_El alumno ya recibió el link del formulario inicial._`;
+    
+    await whatsappService.sendMessage(PROFESSOR_PHONE, notificationForProfessor);
+
+    // Devolvemos el mensaje de confirmación para el cliente
+  return `¡Listo! Tu clase de prueba ha sido agendada con éxito 🎉.
     
 📋 *Resumen de tu clase:*
 👤 Nombre: ${appointment.name}
 🏋️‍♂️ Modalidad: ${appointment.modality}
 🗓 Día: ${appointment.day}
-⏱ Hora: Hablar con los profes por disponibilidad
+⏱ Hora: Nos pondremos en contacto!
     
 Por último, te pido que completes este breve cuestionario para conocerte mejor antes de arrancar. Es súper importante:
 👉 https://docs.google.com/forms/d/16CCzddeGjIaj1K93y7oyvVnallAAh7Gn0WsZydtUC3o/edit#response=ACYDBNhZmmg7gG8nE2LKHxIpduKNSr9CMhMDoDreeQNKl5X04_cUowy8SfL-yJDs41XqGYw
@@ -448,13 +454,26 @@ Por último, te pido que completes este breve cuestionario para conocerte mejor 
         break;
       case 'metrics':
         state.metrics = message;
-        response = this.completeAppointment(to);
+        state.step = 'confirmation'; 
+        response = `¡Casi listo! Resumen de tu clase de prueba:\n\n👤 *Nombre:* ${state.name}\n🏋️‍♂️ *Modalidad:* ${state.modality}\n🗓 *Día:* ${state.day}\n🎂 *Edad:* ${state.age}\n⚖️ *Peso/Altura:* ${state.metrics}\n\n¿Estás de acuerdo con agendar este turno? Respondé *SI* para confirmar o *NO* para cancelar.`;
+        break;
+      case 'confirmation':
+        const reply = message.toLowerCase().trim();
+        if (reply === 'si' || reply === 'sí') {
+          response = await this.completeAppointment(to);
+        } else if (reply === 'no') {
+          delete this.appointmentState[to];
+          response = 'Turno cancelado correctamente.';
+        } else {
+          response = 'Por favor, respondé únicamente con *SI* para confirmar o *NO* para cancelar.';
+          await whatsappService.sendMessage(to, response);
+          return; 
+        }
         break;
     }
     
     await whatsappService.sendMessage(to, response);
     
-    // Si la cita finalizó y se borró el estado, le mostramos el menú para volver
     if (!this.appointmentState[to]) {
       await this.answerBack(to);
     }

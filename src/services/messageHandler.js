@@ -141,7 +141,7 @@ class MessageHandler {
   async sendWelcomeMessage(to, messageId, senderInfo) {
     const name = this.getSenderName(senderInfo);
     const firstName = name.split(' ')[0];
-    const welcomeMessage = `Hola ${firstName} 👋, Soy Nexia tu asistente virtual de *Nexus Calistenia con proposito.*
+    const welcomeMessage = `Hola ${firstName} 👋, Soy Nexia tu asistencia virtual de *Nexus* y voy ayudarte con tus consultas.
     
 Acá no solo entrenás: empezás a entender tu cuerpo, mejorar tu control y evolucionar con intención 🧠💪`;
     await whatsappService.sendMessage(to, welcomeMessage, messageId);

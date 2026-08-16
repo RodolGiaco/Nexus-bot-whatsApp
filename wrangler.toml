@@ -1,0 +1,21 @@
+name = "nexus-bot"
+main = "worker/index.js"
+compatibility_date = "2026-08-16"
+
+# Non-secret config. Not sensitive: the API version and business phone
+# are visible to anyone who messages the bot anyway.
+[vars]
+API_VERSION = "v22.0"
+BASE_URL = "https://graph.facebook.com"
+BUSINESS_PHONE = "1003129282888833"
+PROFESSOR_PHONE = "542616268872"
+
+# Created via: npx wrangler kv namespace create BOT_STATE
+# Replace the id below with the one that command prints out.
+[[kv_namespaces]]
+binding = "BOT_STATE"
+id = "c44f6c743c3540d78b28d9b53015b468"
+
+# Secrets (WEBHOOK_VERIFY_TOKEN, API_TOKEN) are NOT set here.
+# For local dev: put them in .dev.vars (gitignored).
+# For production: `npx wrangler secret put WEBHOOK_VERIFY_TOKEN` / `API_TOKEN`.

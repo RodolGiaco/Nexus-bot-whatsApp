@@ -2,6 +2,15 @@ import whatsappService from './whatsappService.js';
 
 // ⚠️ IMPORTANTE: Reemplaza esto con el número real del profesor (con código de país, sin el '+' ni el '9' intermedio en Argentina). Ejemplo: '542610000000'
 const PROFESSOR_PHONE = '542616268872';
+
+/**
+ * Orquesta toda la conversación de WhatsApp: enruta cada mensaje entrante
+ * según prioridad (mensaje del profesor > cliente en modo puente > reserva
+ * en curso > saludo/menú), envía los menús interactivos y arma las
+ * respuestas. Mantiene el estado de cada conversación en memoria del
+ * proceso, por eso esta variante solo tiene sentido en un servidor Node de
+ * larga duración (a diferencia de worker/, que persiste el estado en KV).
+ */
 class MessageHandler {
 
   constructor() {

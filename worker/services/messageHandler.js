@@ -3,6 +3,15 @@ import createStateStore from './state.js';
 
 // ⚠️ IMPORTANTE: número real del profesor (con código de país, sin el '+'
 // ni el '9' intermedio en Argentina). Configurable vía wrangler.toml [vars].
+
+/**
+ * Orquesta toda la conversación de WhatsApp: enruta cada mensaje entrante
+ * según prioridad (mensaje del profesor > cliente en modo puente > reserva
+ * en curso > saludo/menú), envía los menús interactivos y arma las
+ * respuestas. El estado de cada conversación vive en Workers KV
+ * (ver state.js), no en memoria: una misma conversación puede caer en
+ * distintas instancias del Worker entre un mensaje y el siguiente.
+ */
 class MessageHandler {
   constructor(env) {
     this.whatsappService = createWhatsappService(env);

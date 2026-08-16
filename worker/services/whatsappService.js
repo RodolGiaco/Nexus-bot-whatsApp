@@ -1,4 +1,12 @@
 // Workers runs on the native fetch API — no axios needed.
+
+/**
+ * API de alto nivel para enviar mensajes de WhatsApp (texto, botones,
+ * medios, ubicación, contactos) y marcar mensajes como leídos, delegando
+ * el POST a la Graph API en sendToWhatsApp().
+ * @param {object} env - bindings/vars del Worker (BASE_URL, API_VERSION,
+ *   BUSINESS_PHONE, API_TOKEN), definidos en wrangler.toml y como secrets.
+ */
 function createWhatsappService(env) {
   const url = `${env.BASE_URL}/${env.API_VERSION}/${env.BUSINESS_PHONE}/messages`;
 

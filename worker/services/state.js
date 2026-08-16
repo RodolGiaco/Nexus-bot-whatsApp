@@ -7,6 +7,13 @@
 // Keys are namespaced by "kind" (appt, handoff, chat) and phone number
 // for per-user state, or stored under a fixed "global:" key for the
 // single shared value (currentClientForProfessor).
+
+/**
+ * @param {KVNamespace} kv - el binding de Workers KV (BOT_STATE en wrangler.toml).
+ * @returns {object} un store con getUser/setUser/deleteUser (por conversación,
+ *   namespaced por "kind" + teléfono) y getGlobal/setGlobal/deleteGlobal
+ *   (para el único valor compartido entre todas las conversaciones).
+ */
 function createStateStore(kv) {
   const userKey = (kind, phone) => `${kind}:${phone}`;
   const globalKey = (key) => `global:${key}`;

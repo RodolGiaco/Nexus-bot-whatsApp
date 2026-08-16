@@ -1,5 +1,10 @@
 import sendToWhatsApp from "./httpRequest/sendToWhatsApp.js";
 
+/**
+ * API de alto nivel para enviar mensajes de WhatsApp (texto, botones,
+ * medios, ubicación, contactos) y marcar mensajes como leídos, delegando
+ * el POST a la Graph API en sendToWhatsApp.js (vía axios).
+ */
 class WhatsAppService {
   async sendMessage(to, body, messageId) {
     const data = {

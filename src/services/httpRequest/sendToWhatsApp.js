@@ -14,7 +14,7 @@ const sendToWhatsApp = async (data) => {
             headers: headers,
             data,
         })
-        return response.datal;
+        return response.data;
     } catch (error) {
         console.error(error)
     }

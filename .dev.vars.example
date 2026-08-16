@@ -1,0 +1,9 @@
+# Copiá este archivo a .dev.vars y completá los valores reales.
+# .dev.vars está en .gitignore: nunca se sube al repositorio.
+# Usado por `wrangler dev` para correr el Worker en local (worker/index.js).
+# En producción estos mismos valores se cargan con:
+#   npx wrangler secret put WEBHOOK_VERIFY_TOKEN
+#   npx wrangler secret put API_TOKEN
+
+WEBHOOK_VERIFY_TOKEN=changeme
+API_TOKEN=changeme

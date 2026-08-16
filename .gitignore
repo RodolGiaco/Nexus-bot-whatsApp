@@ -1,5 +1,23 @@
+# Dependencies
 node_modules/
+
+# Environment & secrets
 .env
+.env.local
 .dev.vars
-.wrangler/
 src/credentials/credentials.json
+*.pem
+*.key
+
+# Cloudflare Workers
+.wrangler/
+
+# Logs
+npm-debug.log*
+*.log
+
+# OS
+.DS_Store
+
+# Editor / local tooling
+.claude/

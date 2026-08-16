@@ -190,6 +190,8 @@ Completá los valores reales en el archivo copiado: el token de acceso de la Wha
 
 Vincular el número en el App Dashboard no alcanza: para que la Cloud API pueda enviar y recibir mensajes con ese número hace falta registrarlo explícitamente con una llamada a la Graph API. Si se omite este paso, el número figura configurado pero cualquier envío falla — es el paso que más fácil se pasa por alto al conectar un número nuevo.
 
+> ⚠️ El `<BUSINESS_PHONE>` de la URL **no es el número de teléfono** (`+54 9 261 778 7717`, por ejemplo): es el **"Identificador del número de teléfono"** que muestra Meta App Dashboard → WhatsApp → API Setup, un ID numérico propio de la Cloud API. Es el mismo valor que va en `BUSINESS_PHONE` en `.env` / `wrangler.toml`.
+
 ```bash
 curl -X POST "https://graph.facebook.com/v22.0/<BUSINESS_PHONE>/register" \
   -H "Authorization: Bearer <API_TOKEN>" \

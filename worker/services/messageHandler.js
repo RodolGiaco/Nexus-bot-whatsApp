@@ -432,24 +432,6 @@ Por último, te pido que completes este breve cuestionario para conocerte mejor 
     }
   }
 
-  // Flujo de asistente con OpenAI — inerte: la versión original tampoco lo
-  // conectaba (openAiService.js está comentado y nada setea assistandState).
-  // Se conserva la estructura por si lo habilitan más adelante.
-  async handleAssistandFlow(to, message, openAiService) {
-    const menuMessage = '¿La respuesta fue de tu ayuda?';
-    const buttons = [
-      { type: 'reply', reply: { id: 'option_4', title: 'Si, Gracias' } },
-      { type: 'reply', reply: { id: 'option_5', title: 'Hacer otra pregunta' } },
-      { type: 'reply', reply: { id: 'option_6', title: 'Emergencia' } },
-    ];
-
-    const response = openAiService ? await openAiService(message) : null;
-
-    await this.state.deleteUser('assistant', to);
-    await this.whatsappService.sendMessage(to, response);
-    await this.whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
-  }
-
   async sendContact(to) {
     const contact = {
       addresses: [

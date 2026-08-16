@@ -1,6 +1,4 @@
 import whatsappService from './whatsappService.js';
-/* import appendToSheet from './googleSheetsService.js';
-import openAiService from './openAiService.js'; */
 
 // ⚠️ IMPORTANTE: Reemplaza esto con el número real del profesor (con código de país, sin el '+' ni el '9' intermedio en Argentina). Ejemplo: '542610000000'
 const PROFESSOR_PHONE = '542616268872';
@@ -8,11 +6,10 @@ class MessageHandler {
 
   constructor() {
     this.appointmentState = {};
-    this.assistandState = {};
-    // 1. Inicializamos el estado para pausar el bot
+    // Estado para pausar el bot cuando un cliente pide hablar con el profesor
     this.humanHandoffState = {};
 
-    // --- NUEVO: Sistema de Sesiones (Modo Puente) ---
+    // --- Sistema de sesiones (modo puente) ---
     this.activeChats = {}; // Clientes en chat con el profe: { '549...': true }
     this.currentClientForProfessor = null; // Guarda el ID del cliente al que el profe le está respondiendo
   }
@@ -480,26 +477,6 @@ Por último, te pido que completes este breve cuestionario para conocerte mejor 
   }
 
 
-
-  async handleAssistandFlow(to, message) {
-    const state = this.assistandState[to];
-    let response;
-
-    const menuMessage = "¿La respuesta fue de tu ayuda?"
-    const buttons = [
-      { type: 'reply', reply: { id: 'option_4', title: "Si, Gracias" } },
-      { type: 'reply', reply: { id: 'option_5', title: 'Hacer otra pregunta'}},
-      { type: 'reply', reply: { id: 'option_6', title: 'Emergencia'}}
-    ];
-
-    if (state.step === 'question') {
-      response = await openAiService(message);
-    }
-
-    delete this.assistandState[to];
-    await whatsappService.sendMessage(to, response);
-    await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
-  }
 
   async sendContact(to) {
     const contact = {
